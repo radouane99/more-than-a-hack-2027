@@ -28,6 +28,20 @@ The manifest records the exact submission hash. Licensed data and generated subm
 
 ## Interactive dashboard
 
-Open `dashboard/index.html` in a browser and import `submission/DEVUPWARD.csv`. All CSV parsing happens locally in your browser. Alternatively serve the project root with `python -m http.server 8765 --bind 127.0.0.1` and visit http://127.0.0.1:8765/dashboard/ to load the local submission automatically. Keep this server bound to loopback because the project contains licensed match files.
+Open `dashboard/index.html` in a browser and import `submission/DEVUPWARD_v2.csv`. All CSV parsing happens locally in your browser. Alternatively serve the project root with `python -m http.server 8765 --bind 127.0.0.1` and visit http://127.0.0.1:8765/dashboard/ to load the local submission automatically. Keep this server bound to loopback because the project contains licensed match files.
 
-The dashboard offers half selection, clickable possession timelines, frame inspection, live-play possession shares, spell duration statistics, and explicit model limitations. It displays model predictions, not official match statistics. The validation snapshot is the fixed V1 diagnostic, not a score computed for newly imported CSV files. No tracking coordinates or video are embedded in the dashboard source.
+The dashboard offers half selection, clickable possession timelines, frame inspection, live-play possession shares, spell duration statistics, and explicit model limitations. It displays model predictions, not official match statistics. The validation snapshot is the fixed V2 diagnostic, not a score computed for newly imported CSV files. No tracking coordinates or video are embedded in the dashboard source.
+
+## Motion-aware V2 candidate
+
+V1 is retained unchanged. Generate the V2 candidate with:
+
+```powershell
+.\.venv312\Scripts\python.exe -m unittest test_possession_v2 -v
+.\.venv312\Scripts\python.exe possession_v2.py --out submission/DEVUPWARD_v2.csv
+.\.venv312\Scripts\python.exe evaluation/validate_submission.py submission/DEVUPWARD_v2.csv
+```
+
+V2 combines ball proximity, tactical phases and unlabeled collective-motion clustering to distinguish occlusion from stoppages. See the V2 section of the technical report for every threshold, the fixed diagnostic and limitations. The dashboard now loads `submission/DEVUPWARD_v2.csv` by default when served locally; when opened as a file, import that CSV explicitly. Its diagnostic card is fixed to V2, including when importing another file. V1 remains reproducible with `possession.py`.
+
+For a team-named V2 submission, generate `python possession_v2.py --out submission/final/DEVUPWARD.csv`. Its manifest identifies the V2 method; only that CSV belongs in the final V2 upload. The exploratory `_v2.csv` filename is for local version separation.

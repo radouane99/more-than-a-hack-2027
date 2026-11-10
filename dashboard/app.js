@@ -36,7 +36,7 @@ if(typeof document!=='undefined'){
  document.querySelectorAll('[data-half]').forEach(b=>b.addEventListener('click',()=>setHalf(Number(b.dataset.half)-1)));
  $('scrub').addEventListener('input',inspect);window.addEventListener('resize',inspect);
  $('timelineCanvas').addEventListener('click',e=>{if(!labels)return;const rect=e.currentTarget.getBoundingClientRect(),[a,b]=BLOCKS[half];$('scrub').value=Math.round(a+Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width))*(b-a));inspect();});
- if(location.protocol==='http:'||location.protocol==='https:')fetch('../submission/DEVUPWARD.csv').then(r=>{if(!r.ok)throw Error('No local prediction file');return r.text();}).then(t=>loadData(t,'DEVUPWARD.csv · local model output')).catch(()=>{$('status').textContent='Import DEVUPWARD.csv to explore your predictions. Processing stays in this browser.';});
- else $('status').textContent='Import DEVUPWARD.csv to explore your predictions. Processing stays in this browser.';
+ if(location.protocol==='http:'||location.protocol==='https:')fetch('../submission/DEVUPWARD_v2.csv').then(r=>{if(!r.ok)throw Error('No local prediction file');return r.text();}).then(t=>loadData(t,'DEVUPWARD_v2.csv · local model output')).catch(()=>{$('status').textContent='Import DEVUPWARD_v2.csv to explore your predictions. Processing stays in this browser.';});
+ else $('status').textContent='Import DEVUPWARD_v2.csv to explore your predictions. Processing stays in this browser.';
 }
 if(typeof module!=='undefined')module.exports={parseCSV,analyse,duration,timecode};
