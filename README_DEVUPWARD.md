@@ -25,3 +25,9 @@ Alternatively set `$env:MTAH_DATA_DIR` to the parent directory of tactical. Vide
 - Public repository containing this source and the supplied evaluation/starter helpers
 
 The manifest records the exact submission hash. Licensed data and generated submissions are ignored by Git. No private reference labels are used. Public diagnostics cannot establish the full-match rank. Registration, team eligibility and the submission form must be handled with the organisers; generating these files does not register or submit an entry.
+
+## Interactive dashboard
+
+Open `dashboard/index.html` in a browser and import `submission/DEVUPWARD.csv`. All CSV parsing happens locally in your browser. Alternatively serve the project root with `python -m http.server 8765 --bind 127.0.0.1` and visit http://127.0.0.1:8765/dashboard/ to load the local submission automatically. Keep this server bound to loopback because the project contains licensed match files.
+
+The dashboard offers half selection, clickable possession timelines, frame inspection, live-play possession shares, spell duration statistics, and explicit model limitations. It displays model predictions, not official match statistics. The validation snapshot is the fixed V1 diagnostic, not a score computed for newly imported CSV files. No tracking coordinates or video are embedded in the dashboard source.
