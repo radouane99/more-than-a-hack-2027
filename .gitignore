@@ -66,3 +66,7 @@ env/
 
 # DEVUPWARD generated deliverables
 submission/
+
+# Local report builds and rendered review pages
+output/
+tmp/pdfs/

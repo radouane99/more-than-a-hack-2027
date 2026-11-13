@@ -45,3 +45,7 @@ V1 is retained unchanged. Generate the V2 candidate with:
 V2 combines ball proximity, tactical phases and unlabeled collective-motion clustering to distinguish occlusion from stoppages. See the V2 section of the technical report for every threshold, the fixed diagnostic and limitations. The dashboard now loads `submission/DEVUPWARD_v2.csv` by default when served locally; when opened as a file, import that CSV explicitly. Its diagnostic card is fixed to V2, including when importing another file. V1 remains reproducible with `possession.py`.
 
 For a team-named V2 submission, generate `python possession_v2.py --out submission/final/DEVUPWARD.csv`. Its manifest identifies the V2 method; only that CSV belongs in the final V2 upload. The exploratory `_v2.csv` filename is for local version separation.
+
+## Submission PDF
+
+The short V2 technical report is generated with `python scripts/build_technical_pdf.py` (requires `reportlab` for report authoring only). It writes `output/pdf/DEVUPWARD.pdf` and copies it to `submission/final/DEVUPWARD.pdf`. The upload pair is `submission/final/DEVUPWARD.csv` plus `submission/final/DEVUPWARD.pdf`. Generated report files remain local and ignored by Git.
