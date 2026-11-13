@@ -66,7 +66,7 @@ if __name__ == '__main__':
     if reason:
         print("FAIL  {}".format(os.path.basename(args.submission)))
         print("      {}".format(reason))
-        print("\nSee SUBMISSION.md for the contract. The usual causes are an off-by-one at the "
+        print("\nSee docs/challenge/SUBMISSION.md for the contract. The usual causes are an off-by-one at the "
               "start or end of\nthe file, a missing header, and blank cells where the system had "
               "no answer -- write X instead.")
         sys.exit(1)

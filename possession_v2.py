@@ -128,7 +128,7 @@ def build_scores(nearest, ball, collective):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--out', default='submission/DEVUPWARD_v2.csv')
+    parser.add_argument('--out', default='submission/final/DEVUPWARD.csv')
     args = parser.parse_args()
     nearest, ball, collective = read_features()
     scores, diagnostics = build_scores(nearest, ball, collective)
