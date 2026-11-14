@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {parseCSV, analyse} = require('./app.js');
+const {parseCSV, analyse, advanceFrame} = require('./app.js');
 // Use synthetic labels to test boundaries without shipping licensed match outputs.
 const labels = Array(199319).fill('X');
 labels.fill('H',11185,90652);
@@ -15,4 +15,8 @@ assert.throws(()=>parseCSV('frame,label\n0,H'));
 assert.throws(()=>parseCSV(csv.replace('0,X','0,Z')));
 assert.throws(()=>parseCSV(csv.replace('1,X','0,X')));
 assert.equal(analyse(Array(199319).fill('D')).spells.length,0);
+assert.equal(advanceFrame(100, .1, 60, 1000), 250);
+assert.equal(advanceFrame(999, .1, 60, 1000), 1000);
+assert.equal(advanceFrame(100, -1, 60, 1000), 100);
+assert.equal(advanceFrame(100, 5, 60, 1000), 475);
 console.log('PASS: half boundaries, possession segments, dead-only input, malformed CSV rejection.');

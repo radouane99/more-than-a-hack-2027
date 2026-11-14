@@ -94,7 +94,7 @@ The earlier implementation in `possession.py` is retained because V2 imports its
 
 Open [dashboard/index.html](dashboard/index.html) in a browser and import `submission/final/DEVUPWARD.csv`. Parsing and analysis happen locally; no licensed data is embedded in the dashboard source.
 
-The interface includes half selection, an interactive possession timeline, frame inspection and predicted possession statistics. Its diagnostic card shows the fixed V2 result, regardless of which CSV is imported. Predictions are not official match statistics.
+The interface includes half selection, an interactive possession timeline, frame inspection and predicted possession statistics. Timeline playback supports 15x, 60x and 120x speeds, pauses on half changes, and stops at the half boundary. Pointer tooltips show the video time and predicted state. Entry effects and hover transitions respect the browser's reduced-motion preference. Its diagnostic card shows the fixed V2 result, regardless of which CSV is imported. Predictions are not official match statistics.
 
 For automatic loading of the local final CSV:
 

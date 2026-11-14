@@ -3,6 +3,7 @@ const BLOCKS = [[11185, 90651], [110808, 190197]];
 const COLORS = {H: '#27775f', A: '#e99874', D: '#aeb9b3', X: '#e8ece5'};
 const NAMES = {H: 'Barcelona · H', A: 'Athletic Club · A', D: 'Dead ball · D', X: 'No answer · X'};
 let labels = null, half = 0, spells = [], importSequence = 0;
+let playing = false, playbackRequest = null, previousTick = null, playhead = 0;
 const $ = id => document.getElementById(id);
 
 function parseCSV(text) {
@@ -51,6 +52,7 @@ function setStatus(message, error = false) {
 function loadData(text, name) {
   // Parse and analyse completely before replacing any currently displayed data.
   const parsed = parseCSV(text), result = analyse(parsed);
+  stopPlayback();
   labels = parsed;
   spells = result.runs;
   const {H, A, D, X} = result.count, live = H + A;
@@ -64,13 +66,18 @@ function loadData(text, name) {
   $('mean').textContent = result.spells.length ? `${(live / 25 / result.spells.length).toFixed(1)}s` : '—';
   $('longest').textContent = result.spells.length ? duration(Math.max(...result.spells.map(r => r.end - r.start + 1))) : '—';
   $('source').textContent = name;
+  const total = H + A + D + X;
+  for (const [id, value] of [['homeShare', live ? H / live : 0], ['awayShare', live ? A / live : 0], ['deadTime', total ? D / total : 0]]) {
+    $(id + 'Meter').style.width = `${100 * value}%`;
+  }
   document.body.classList.add('has-data');
-  document.querySelectorAll('[data-half], #scrub').forEach(el => { el.disabled = false; });
+  document.querySelectorAll('[data-half], #scrub, #play').forEach(el => { el.disabled = false; });
   setStatus('✓ Prediction file verified · 199,319 frames · Statistics cover the two published half windows.');
   setHalf(half);
 }
 
 function setHalf(value) {
+  stopPlayback();
   half = value;
   document.querySelectorAll('[data-half]').forEach(b => {
     const selected = Number(b.dataset.half) === half + 1;
@@ -132,7 +139,49 @@ async function importFile(file) {
   }
 }
 
+
+function advanceFrame(frame, elapsedSeconds, speed, end) {
+  return Math.min(end, frame + Math.max(0, Math.min(elapsedSeconds, .25)) * 25 * speed);
+}
+
+function stopPlayback() {
+  playing = false;
+  previousTick = null;
+  if (playbackRequest !== null) { cancelAnimationFrame(playbackRequest); playbackRequest = null; }
+  if (typeof document !== 'undefined' && $('play')) {
+    $('play').setAttribute('aria-pressed', 'false');
+    $('play').setAttribute('aria-label', 'Play possession timeline');
+    $('playLabel').textContent = 'Play timeline';
+    $('play').querySelector('.play-glyph').textContent = '▶';
+  }
+}
+
+function startPlayback() {
+  if (!labels) return;
+  if (playing) { stopPlayback(); return; }
+  const [start, end] = BLOCKS[half];
+  playhead = Number($('scrub').value);
+  if (playhead >= end) playhead = start;
+  playing = true;
+  $('play').setAttribute('aria-pressed', 'true');
+  $('play').setAttribute('aria-label', 'Pause possession timeline');
+  $('playLabel').textContent = 'Pause timeline';
+  $('play').querySelector('.play-glyph').textContent = 'Ⅱ';
+  function tick(now) {
+    if (!playing) return;
+    if (previousTick !== null) playhead = advanceFrame(playhead, (now - previousTick) / 1000, Number($('speed').value), end);
+    previousTick = now;
+    $('scrub').value = Math.round(playhead);
+    inspect();
+    if (playhead >= end) { stopPlayback(); return; }
+    playbackRequest = requestAnimationFrame(tick);
+  }
+  playbackRequest = requestAnimationFrame(tick);
+}
+
 if (typeof document !== 'undefined') {
+  $('play').addEventListener('click', startPlayback);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopPlayback(); });
   document.querySelectorAll('[data-import]').forEach(button => button.addEventListener('click', () => $('file').click()));
   $('file').addEventListener('change', async event => {
     await importFile(event.target.files[0]);
@@ -150,14 +199,33 @@ if (typeof document !== 'undefined') {
     importFile(event.dataTransfer.files[0]);
   });
   document.querySelectorAll('[data-half]').forEach(b => b.addEventListener('click', () => setHalf(Number(b.dataset.half) - 1)));
-  $('scrub').addEventListener('input', inspect);
+  $('scrub').addEventListener('input', () => { stopPlayback(); inspect(); });
   window.addEventListener('resize', inspect);
   $('timelineCanvas').addEventListener('click', e => {
     if (!labels) return;
     const rect = e.currentTarget.getBoundingClientRect(), [a, b] = BLOCKS[half];
+    stopPlayback();
     $('scrub').value = Math.round(a + Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * (b - a));
     inspect();
   });
+  const tip = $('timelineTooltip'), canvas = $('timelineCanvas');
+  canvas.addEventListener('pointermove', event => {
+    if (!labels || event.pointerType === 'touch') return;
+    const rect = canvas.getBoundingClientRect(), fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const [a, b] = BLOCKS[half], frame = Math.round(a + fraction * (b - a));
+    tip.textContent = `${timecode(frame)} · ${NAMES[labels[frame]]}`;
+    tip.style.left = `${Math.max(22, Math.min(78, fraction * 100))}%`;
+    tip.hidden = false;
+  });
+  canvas.addEventListener('pointerleave', () => { tip.hidden = true; });
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (!reducedMotion.matches && 'IntersectionObserver' in window) {
+    document.body.classList.add('motion-ready');
+    const reveal = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.add('in-view'); reveal.unobserve(entry.target); }
+    }), {threshold: .08});
+    document.querySelectorAll('.reveal').forEach(el => reveal.observe(el));
+  }
   let scrollPending = false;
   function updateNav() {
     let current = '#overview';
@@ -183,4 +251,4 @@ if (typeof document !== 'undefined') {
     });
   } else setStatus('Select DEVUPWARD.csv to begin.');
 }
-if (typeof module !== 'undefined') module.exports = {parseCSV, analyse, duration, timecode};
+if (typeof module !== 'undefined') module.exports = {parseCSV, analyse, duration, timecode, advanceFrame};
