@@ -69,6 +69,14 @@
       <article><div class="metric-label"><span>DEAD BALL</span><svg class="icon" aria-hidden="true"><use href="#icon-layers"/></svg></div><strong id="deadTime">—</strong><div class="metric-meter" aria-hidden="true"><span id="deadTimeMeter"></span></div><div class="metric-bottom"><span class="dot dead-bg"></span><small>Predicted stoppage duration</small></div></article>
     </section>
 
+    <section class="panel reveal match-story" id="matchStory" aria-labelledby="storyTitle">
+      <div class="panel-title"><div><div class="eyebrow">THE MATCH, SUMMARISED</div><h3 id="storyTitle">Match story<span class="title-dot">.</span></h3></div><span class="story-tag">COMPUTED FROM YOUR CSV</span></div>
+      <p class="story-intro">The longest spells, the busiest handovers and the difference between halves. Select a moment to inspect it.</p>
+      <div id="storyCards" class="story-cards"></div>
+      <div class="half-comparison"><div class="half-comparison-title"><h4>A different rhythm after the break?</h4><p id="halfNarrative">—</p></div><div id="halfRows" class="half-rows"></div></div>
+      <small class="story-footnote">Handovers count direct H ↔ A changes only; D and X interrupt the sequence. The busiest window spans up to 3 minutes within one half. These are model predictions, not attacking-danger measures.</small>
+    </section>
+
     <section class="panel reveal observatory" id="timeline">
       <div class="panel-title"><div><div class="eyebrow">01 / TEMPORAL ANALYSIS</div><h3>Possession observatory<span class="title-dot">.</span></h3></div><div class="segmented" aria-label="Select half"><button data-half="1" class="selected" disabled>1st half</button><button data-half="2" disabled>2nd half</button></div></div>
       <div class="legend"><span><i class="home-bg"></i>Barcelona</span><span><i class="away-bg"></i>Athletic</span><span><i class="dead-bg"></i>Dead ball</span><span><i class="unknown-bg"></i>No answer</span></div>

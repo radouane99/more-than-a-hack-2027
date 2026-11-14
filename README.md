@@ -161,3 +161,10 @@ This regenerates the same prediction CSV and writes `submission/final/DEVUPWARD.
 In the single dashboard import area, select the CSV and its evidence JSON together. The browser verifies the exact CSV SHA-256, the evidence schema and all frame values before displaying the explanation. CSV-only imports remain supported and show no invented evidence. The displayed index is not calibrated confidence. Distances and speeds unavailable in tracking remain unavailable.
 
 The evidence sidecar is licensed derived data, ignored with `submission/`; keep it local. It is optional for the dashboard and is not a competition deliverable. Do not upload it to the public repository or replace the required CSV/PDF with it.
+
+
+## Match Story
+
+The dashboard derives a clickable summary directly from the imported CSV: each team's longest uninterrupted predicted possession, the busiest rolling three-minute window of direct H-to-A/A-to-H changes, and the live-play possession balance in each half. D and X interrupt direct handovers. Window searches never cross half boundaries; ties select the earliest window. Missing live-play predictions are shown explicitly rather than converted to a 0% share.
+
+Story cards and half-comparison rows seek to the corresponding published video frame in the Observatory. These summaries describe predicted possession patterns; they do not infer goals, chance quality or attacking danger.

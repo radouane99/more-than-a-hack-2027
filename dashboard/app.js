@@ -43,6 +43,90 @@ function analyse(data) {
   return {count, runs, spells: runs.filter(r => r.label === 'H' || r.label === 'A')};
 }
 
+function buildMatchStory(result, blocks = BLOCKS, windowFrames = 4500) {
+  const longest = {H: null, A: null};
+  for (const run of result.spells) {
+    const previous = longest[run.label];
+    if (!previous || run.end - run.start > previous.end - previous.start) longest[run.label] = run;
+  }
+  const halves = [], handovers = [];
+  let busiest = null;
+  for (let halfIndex = 0; halfIndex < blocks.length; halfIndex++) {
+    const [start, end] = blocks[halfIndex], counts = {H: 0, A: 0, D: 0, X: 0};
+    const runs = result.runs.filter(r => r.start >= start && r.end <= end);
+    const events = [];
+    for (let i = 0; i < runs.length; i++) {
+      const run = runs[i]; counts[run.label] += run.end - run.start + 1;
+      const previous = runs[i - 1];
+      if (previous && previous.end + 1 === run.start && ['H', 'A'].includes(previous.label) && ['H', 'A'].includes(run.label) && previous.label !== run.label) events.push(run.start);
+    }
+    handovers.push(...events);
+    const live = counts.H + counts.A;
+    halves.push({half: halfIndex, start, end, counts, homeShare: live ? counts.H / live : null, handovers: events.length});
+    const width = Math.min(windowFrames, end - start + 1);
+    const starts = [...new Set([start, ...events.map(t => Math.min(t, end - width + 1))])].sort((a, b) => a - b);
+    let left = 0, right = 0;
+    for (const lo of starts) {
+      const hi = lo + width - 1;
+      while (left < events.length && events[left] < lo) left++;
+      right = Math.max(right, left);
+      while (right < events.length && events[right] <= hi) right++;
+      const count = right - left;
+      if (count && (!busiest || count > busiest.count)) busiest = {start: lo, end: hi, count, half: halfIndex};
+    }
+  }
+  return {longest, halves, busiest, handovers: handovers.length};
+}
+
+function openStoryMoment(frame) {
+  const target = BLOCKS.findIndex(([a, b]) => frame >= a && frame <= b);
+  if (target < 0 || !labels) return;
+  if (target !== half) setHalf(target);
+  seek(frame);
+  document.querySelector('a[href="#timeline"]').click();
+}
+
+function renderMatchStory(story) {
+  const cards = $('storyCards'); cards.replaceChildren();
+  const createCard = (kind, title, value, detail, frame) => {
+    const card = document.createElement('button'); card.className = `story-card ${kind}`;
+    const label = document.createElement('small'); label.textContent = title;
+    const number = document.createElement('strong'); number.textContent = value;
+    const description = document.createElement('p'); description.textContent = detail;
+    const action = document.createElement('span'); action.textContent = frame === null ? 'No matching segment' : `${timecode(frame).slice(0, 8)} · Inspect moment →`;
+    card.append(label, number, description, action);
+    card.disabled = frame === null;
+    if (frame !== null) card.addEventListener('click', () => openStoryMoment(frame));
+    cards.append(card);
+  };
+  for (const [team, name] of [['H', 'Barcelona'], ['A', 'Athletic Club']]) {
+    const run = story.longest[team];
+    createCard(team === 'H' ? 'home-story' : 'away-story', `${name.toUpperCase()} / LONGEST SPELL`, run ? `${((run.end - run.start + 1) / 25).toFixed(run.end - run.start + 1 < 25 ? 2 : 1)}s` : '—',
+      run ? `Longest continuous predicted ${name} possession. Stoppages split spells.` : `No live ${name} possession is predicted.`, run ? run.start : null);
+  }
+  const busy = story.busiest;
+  createCard('handover-story', 'BUSIEST HANDOVER WINDOW', busy ? `${busy.count} changes` : '—', busy ? `${duration(busy.end - busy.start + 1)} window · direct team-to-team changes, excluding stoppages and unknown gaps.` : 'No direct H-to-A or A-to-H handover is predicted.', busy ? busy.start : null);
+  const rows = $('halfRows'); rows.replaceChildren();
+  for (const h of story.halves) {
+    const row = document.createElement('button'); row.className = 'half-story-row';
+    row.setAttribute('aria-label', `Inspect ${h.half === 0 ? 'first' : 'second'} half at its published start`);
+    const name = document.createElement('b'); name.textContent = h.half === 0 ? '1st half' : '2nd half';
+    const bar = document.createElement('span'); bar.className = 'half-story-bar';
+    const fill = document.createElement('i'); fill.style.width = h.homeShare === null ? '0%' : `${h.homeShare * 100}%`; bar.append(fill);
+    if (h.homeShare === null) bar.classList.add('no-live');
+    const shares = document.createElement('span'); shares.className = 'half-story-shares';
+    shares.textContent = h.homeShare === null ? 'No live predictions' : `${(h.homeShare * 100).toFixed(1)}% H / ${((1 - h.homeShare) * 100).toFixed(1)}% A`;
+    const summary = document.createElement('small'); summary.textContent = `${h.handovers} direct handovers · ${duration(h.counts.D)} dead ball${h.counts.X ? ` · ${duration(h.counts.X)} unanswered` : ''}`;
+    row.append(name, bar, shares, summary); row.addEventListener('click', () => openStoryMoment(h.start)); rows.append(row);
+  }
+  const [first, second] = story.halves;
+  if (first.homeShare === null || second.homeShare === null) $('halfNarrative').textContent = 'A live-play share comparison requires H or A predictions in both halves.';
+  else {
+    const delta = (second.homeShare - first.homeShare) * 100;
+    $('halfNarrative').textContent = Math.abs(delta) < .05 ? 'Barcelona’s predicted live-play share is unchanged to one decimal place.' : `Barcelona’s predicted live-play share ${delta > 0 ? 'rises' : 'falls'} by ${Math.abs(delta).toFixed(1)} percentage points in the second half.`;
+  }
+}
+
 function duration(frames) {
   const s = Math.round(frames / 25);
   return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
@@ -67,6 +151,7 @@ function loadData(text, name, evidence = null) {
   reviewRendered = false;
   labels = parsed;
   spells = result.runs;
+  renderMatchStory(buildMatchStory(result));
   const {H, A, D, X} = result.count, live = H + A;
   const pct = v => live ? `${(100 * v / live).toFixed(1)}%` : '—';
   $('homeShare').textContent = $('balanceHome').textContent = pct(H);
@@ -505,4 +590,4 @@ if (typeof document !== 'undefined') {
     })();
   } else setStatus('Select DEVUPWARD.csv to begin.');
 }
-if (typeof module !== 'undefined') module.exports = {validateEvidence, EVIDENCE_COLUMNS, validatePrediction, parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};
+if (typeof module !== 'undefined') module.exports = {buildMatchStory, validateEvidence, EVIDENCE_COLUMNS, validatePrediction, parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};

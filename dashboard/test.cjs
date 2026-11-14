@@ -1,8 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const {validateEvidence, EVIDENCE_COLUMNS, validatePrediction, parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
+const {buildMatchStory, validateEvidence, EVIDENCE_COLUMNS, validatePrediction, parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
 // Use synthetic labels to test boundaries without shipping licensed match outputs.
 const labels = Array(199319).fill('X');
 labels.fill('H',11185,90652);
@@ -42,4 +40,17 @@ assert.throws(()=>validateEvidence({...evidence,columns:[]},digest));
 const invalidRows=evidence.rows.slice();invalidRows[100]=[1,1.2,3.4,2.1,null,.4,1,1.2,0,0];
 assert.throws(()=>validateEvidence({...evidence,rows:invalidRows},digest));
 assert.throws(()=>validateEvidence({...evidence,review_windows:[{start:0,end:99}]},digest));
-console.log('PASS: CSV validation, half boundaries, playback, lens clipping and orbit mapping.');
+const storyRuns=[{start:0,end:3,label:'H'},{start:4,end:7,label:'A'},{start:8,end:9,label:'D'},{start:10,end:11,label:'H'},{start:12,end:13,label:'X'},{start:14,end:19,label:'A'},{start:30,end:32,label:'H'},{start:33,end:34,label:'A'},{start:35,end:49,label:'H'}];
+const story=buildMatchStory({runs:storyRuns,spells:storyRuns.filter(r=>['H','A'].includes(r.label))},[[0,19],[30,49]],6);
+assert.equal(story.handovers,3);
+assert.deepEqual(story.busiest,{start:30,end:35,count:2,half:1});
+assert.equal(story.longest.H.start,35);
+assert.equal(story.longest.A.start,14);
+assert.equal(story.halves[0].counts.D,2);
+assert.equal(story.halves[0].counts.X,2);
+assert.equal(story.halves[0].homeShare,6/16);
+const noLive=buildMatchStory({runs:[{start:0,end:19,label:'X'},{start:30,end:49,label:'X'}],spells:[]},[[0,19],[30,49]],6);
+assert.equal(noLive.busiest,null);
+assert.equal(noLive.longest.H,null);
+assert.equal(noLive.halves[0].homeShare,null);
+console.log('PASS: CSV/evidence validation, playback, lens/orbit mapping and match-story statistics.');
