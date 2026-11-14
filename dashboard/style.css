@@ -379,3 +379,23 @@ body:not(.has-data) .metrics,body:not(.has-data) .observatory,body:not(.has-data
 .import-zone { flex-wrap:wrap; }
 .import-copy { flex:1 1 200px; min-width:160px; }
 @media(max-width:620px) { .import-copy { flex-basis:180px; } }
+.why-panel { margin-top:24px; border-top:1px solid #6a82532b; padding-top:22px; }
+.why-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.why-heading h4 { color:#e1edcf; font-size:19px; font-weight:500; letter-spacing:-.4px; margin:5px 0 0; }
+.evidence-badge { font-size:7px; letter-spacing:1px; color:#95b67b; border:1px solid #52703c77; border-radius:4px; padding:5px 7px; white-space:nowrap; }
+.evidence-status { color:#829c6f; font-size:9px; line-height:1.8; margin:13px 0; max-width:780px; }
+.why-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:17px; }
+.why-grid>div { padding:15px 13px; border:1px solid #38552b88; background:#152b1c; border-radius:6px; min-width:0; }
+.why-grid small { display:block; color:#8aa575; font-size:6px; letter-spacing:1px; }
+.why-grid strong { display:block; font-size:14px; font-weight:500; color:#d5e5c0; margin:10px 0 7px; }
+.why-grid span { display:block; color:#708d5d; font-size:7px; line-height:1.6; }
+.why-explanation { padding:15px; background:#20331e; border-left:2px solid #c98d56; margin-top:13px; border-radius:3px; }
+.why-explanation>span { display:block; color:#b7cda0; font-size:8px; line-height:1.8; }
+.why-explanation p { color:#89a471; font-size:9px; line-height:1.8; margin-top:7px; }
+.review-heading { display:flex; justify-content:space-between; gap:12px; color:#8ba774; font-size:7px; letter-spacing:1px; margin-top:20px; }
+.review-heading>span { color:#668351; font-size:7px; letter-spacing:0; }
+.review-windows { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; color:#789562; font-size:9px; }
+.review-windows button { background:#1d321e; color:#aec695; border:1px solid #3e5b2f; padding:7px 9px; font-size:8px; border-radius:4px; }
+.review-windows button:hover { background:#2e4329; color:#ffbf90; }
+@media(max-width:1050px) { .why-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:620px) { .why-heading { flex-wrap:wrap; }.why-heading h4 { font-size:19px; }.evidence-badge { font-size:6px; }.why-grid { gap:8px; }.why-grid strong { font-size:12px; }.review-heading { flex-direction:column; gap:5px; } }

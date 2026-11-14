@@ -1,11 +1,26 @@
 """Physical invariants for the V2 stoppage model; no match labels required."""
 import unittest
+from unittest.mock import patch
 import numpy as np
-from possession_v2 import average, dead_probability, motion_evidence
+from possession_v2 import average, dead_probability, motion_evidence, build_scores
 from possession import decode
 from games import GAME, GAMES, half_video_blocks
 
 class MotionTests(unittest.TestCase):
+    def test_optional_evidence_does_not_change_scores(self):
+        n=GAMES[GAME]['n_video_frames']
+        nearest=np.full((n,2),np.inf)
+        ball=np.full((n,2),np.nan)
+        motion=np.full(n,2.)
+        evidence={}
+        with patch('possession.load',return_value=[]), patch('starter.load_smart_tagging.load',return_value=[]):
+            original,original_diagnostics=build_scores(nearest,ball,motion)
+            recorded,recorded_diagnostics=build_scores(nearest,ball,motion,evidence)
+        np.testing.assert_array_equal(original,recorded)
+        self.assertEqual(original_diagnostics,recorded_diagnostics)
+        self.assertEqual(len(evidence['stoppage_index']),n)
+        self.assertFalse(evidence['ball_visible'].any())
+
     def test_stationary_ball_and_slow_players_raise_stoppage_evidence(self):
         stopped = dead_probability(1., 1., 0., False, 0.)
         live = dead_probability(0., 0., 1., False, 1.)

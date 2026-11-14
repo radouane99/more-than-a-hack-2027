@@ -34,3 +34,6 @@ evaluation/results/*.csv
 .vscode/
 .DS_Store
 organizers/
+
+# Feature evidence is licensed derived data, including custom output paths
+*.evidence.json

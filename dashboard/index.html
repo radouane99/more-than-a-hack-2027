@@ -35,7 +35,7 @@
     <header>
       <div class="breadcrumb">DEVUPWARD <span>/</span> <b>Match intelligence</b></div>
       <div class="header-actions"><span class="version-tag">MODEL V2</span></div>
-      <input id="file" type="file" accept=".csv,text/csv" aria-label="Import prediction CSV" hidden>
+      <input id="file" type="file" accept=".csv,.json,text/csv,application/json" aria-label="Import prediction CSV and optional evidence JSON" multiple hidden>
     </header>
 
     <section class="heading">
@@ -56,7 +56,7 @@
 
     <div class="import-zone" id="importZone">
       <div class="import-symbol"><svg class="icon" aria-hidden="true"><use href="#icon-upload"/></svg></div>
-      <div class="import-copy"><h3 id="importHeading">Validate your predictions.</h3><p>Drop one CSV here. Its structure is checked before any analysis appears.</p><div class="import-rules"><span>CSV · max 10 MB</span><span>199,319 ordered frames</span><span>H / A / D / X</span></div></div>
+      <div class="import-copy"><h3 id="importHeading">Validate your predictions.</h3><p>Select your CSV, optionally with its evidence JSON. Both are checked before use.</p><div class="import-rules"><span>CSV · max 10 MB</span><span>199,319 ordered frames</span><span>H / A / D / X</span><span>Optional evidence JSON · max 30 MB</span></div></div>
       <button class="import-secondary" data-import><span id="importButtonLabel">Choose & validate CSV</span><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
     </div>
     <div id="validationReport" class="validation-report" hidden><span>FORMAT CHECKS PASSED</span><ul><li>CSV header</li><li>199,319 rows</li><li>Ordered frame IDs</li><li>Valid H / A / D / X labels</li></ul><small>Format validation does not establish prediction accuracy.</small></div>
@@ -95,6 +95,15 @@
       <input id="scrub" type="range" min="0" max="1" value="0" aria-label="Inspect video frame" disabled>
       <div class="playback"><button id="play" class="play-button" disabled aria-label="Play possession timeline" aria-pressed="false"><span class="play-glyph" aria-hidden="true">▶</span><span id="playLabel">Play timeline</span></button><label class="speed-control">SPEED<select id="speed" aria-label="Timeline playback speed"><option value="15">15×</option><option value="60" selected>60×</option><option value="120">120×</option></select></label><span class="playback-note">Explore the sequence. Every colour is a predicted state.</span></div>
       <div class="inspector"><div><small>VIDEO TIMECODE</small><strong id="timecode">—</strong></div><div><small>FRAME INDEX</small><strong id="frame">—</strong></div><div><small>MODEL STATE</small><strong id="state">—</strong></div><div><small>SEGMENT LENGTH</small><strong id="spellDuration">—</strong></div></div>
+      <section class="why-panel" aria-labelledby="whyTitle">
+        <div class="why-heading"><div><span class="eyebrow">EVIDENCE BEHIND THE FRAME</span><h4 id="whyTitle">Why this prediction?</h4></div><span id="evidenceBadge" class="evidence-badge">NO EVIDENCE LOADED</span></div>
+        <p id="evidenceStatus" class="evidence-status">For real feature values, select DEVUPWARD.csv and its .evidence.json together in the same import area.</p>
+        <div id="evidenceDetails" hidden>
+          <div class="why-grid"><div><small>BALL OBSERVATION</small><strong id="whyBall">—</strong><span id="whyBallSpeed">—</span></div><div><small>NEAREST PLAYER TO BALL</small><strong id="whyDistances">—</strong><span>Home / away distance, metres</span></div><div><small>COLLECTIVE MOTION</small><strong id="whyMotion">—</strong><span>Smoothed 75th-percentile speed</span></div><div><small>STOPPAGE EVIDENCE</small><strong id="whyDead">—</strong><span>Heuristic index 0–1, not confidence</span></div></div>
+          <div class="why-explanation"><span id="whySignals">—</span><p id="whyDecision">—</p></div>
+          <div class="review-heading">EVIDENCE DISAGREEMENTS <span>Review aids, not verified errors</span></div><div id="reviewWindows" class="review-windows"></div>
+        </div>
+      </section>
     </section>
 
     <div class="two-col">

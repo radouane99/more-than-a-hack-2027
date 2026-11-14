@@ -60,13 +60,15 @@ def read_features():
     return nearest, ball, collective
 
 
-def motion_evidence(collective):
+def motion_evidence(collective, evidence=None):
     """Two unsupervised motion clusters, fitted only on unlabeled half windows."""
     slow = np.full(len(collective), .5)
     blocks = half_video_blocks(GAME)
     motion = np.full(len(collective), np.nan)
     for _, a, b in blocks:
         motion[a:b+1] = average(collective[a:b+1], 25)
+    if evidence is not None:
+        evidence['collective_motion_m_s'] = motion
     values = np.concatenate([motion[a:b+1] for _, a, b in blocks])
     values = values[np.isfinite(values)]
     if len(values) < 2:
@@ -93,11 +95,11 @@ def dead_probability(slow, stationary, moving, missing, phase_support):
                    .02, .95)
 
 
-def build_scores(nearest, ball, collective):
+def build_scores(nearest, ball, collective, evidence=None):
     ownership = emissions(nearest, ball)[:, :2]
     normalised = ownership-ownership.max(axis=1, keepdims=True)
     log_team = normalised-np.log(np.exp(normalised).sum(axis=1, keepdims=True))
-    slow, diagnostics = motion_evidence(collective)
+    slow, diagnostics = motion_evidence(collective, evidence)
     visible = np.isfinite(ball).all(axis=1)
     # Ball movement measured across 0.4 seconds, only within continuously observed runs.
     speed = np.full(len(ball), np.nan)
@@ -123,15 +125,22 @@ def build_scores(nearest, ball, collective):
     scores = np.column_stack([log_team+np.log1p(-pdead)[:, None], np.log(pdead)])
     diagnostics['mean_dead_probability_in_halves'] = float(np.mean(np.concatenate([
         pdead[a:b+1] for _,a,b in half_video_blocks(GAME)])))
+    if evidence is not None:
+        evidence.update(ball_visible=visible, nearest_home_m=nearest[:, 0],
+                        nearest_away_m=nearest[:, 1], ball_speed_m_s=speed,
+                        slow_index=slow, phase_support=phase, stoppage_index=pdead,
+                        ball_outside=outside, local_state=np.argmax(scores, axis=1))
     return scores, diagnostics
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default='submission/final/DEVUPWARD.csv')
+    parser.add_argument('--evidence', action='store_true', help='Write a local explanation sidecar bound to this exact CSV')
     args = parser.parse_args()
     nearest, ball, collective = read_features()
-    scores, diagnostics = build_scores(nearest, ball, collective)
+    evidence = {} if args.evidence else None
+    scores, diagnostics = build_scores(nearest, ball, collective, evidence)
     labels = decode(scores)
     write_submission(args.out, labels)
     path = Path(args.out)
@@ -140,6 +149,10 @@ def main():
               'labels':{x:int((labels == x).sum()) for x in ('H','A','D','X')},
               'ground_truth_used_for_inference':False, **diagnostics}
     path.with_suffix('.manifest.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
+    if evidence is not None:
+        from export_evidence import write_evidence
+        evidence_path = write_evidence(path, labels, evidence)
+        print('Local explanation sidecar: {}'.format(evidence_path))
     print(json.dumps(report, indent=2))
 
 if __name__ == '__main__':

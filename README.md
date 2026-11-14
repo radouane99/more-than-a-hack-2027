@@ -148,3 +148,16 @@ submission/final/          Generated CSV, manifest and PDF; ignored
 Built on the organiser's [More Than A Hack 2027 starter repository](https://github.com/metrica-sports/more-than-a-hack-2027). Organiser evaluation code, loaders, reference baselines, citation metadata and [MIT licence](LICENSE) are retained. Optional organiser notebooks use `requirements-starter.txt`; they are not needed for this entry.
 
 Match assets are separately licensed and must not be redistributed. See the retained [competition rules](docs/challenge/RULES.md), [data guide](docs/challenge/DATA.md) and [submission contract](docs/challenge/SUBMISSION.md).
+
+
+## Frame evidence (local, optional)
+
+```powershell
+python possession_v2.py --evidence
+```
+
+This regenerates the same prediction CSV and writes `submission/final/DEVUPWARD.evidence.json`. The sidecar exports actual ball visibility, nearest-team distances, collective motion, ball movement, phase support and the heuristic stoppage index from the V2 scoring pass. It includes up to six long intervals where local evidence and temporal decoding disagree; these are review aids, not verified errors.
+
+In the single dashboard import area, select the CSV and its evidence JSON together. The browser verifies the exact CSV SHA-256, the evidence schema and all frame values before displaying the explanation. CSV-only imports remain supported and show no invented evidence. The displayed index is not calibrated confidence. Distances and speeds unavailable in tracking remain unavailable.
+
+The evidence sidecar is licensed derived data, ignored with `submission/`; keep it local. It is optional for the dashboard and is not a competition deliverable. Do not upload it to the public repository or replace the required CSV/PDF with it.

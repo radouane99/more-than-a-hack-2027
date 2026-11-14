@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {validatePrediction, parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
+const {validateEvidence, EVIDENCE_COLUMNS, validatePrediction, parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
 // Use synthetic labels to test boundaries without shipping licensed match outputs.
 const labels = Array(199319).fill('X');
 labels.fill('H',11185,90652);
@@ -33,4 +33,13 @@ assert.equal(orbitFraction(0, -1, 0, 0), 0);
 assert.equal(orbitFraction(1, 0, 0, 0), .25);
 assert.equal(orbitFraction(0, 1, 0, 0), .5);
 assert.equal(orbitFraction(-1, 0, 0, 0), .75);
+const digest='a'.repeat(64);
+const evidence={schema:'devupward-evidence-v1',method:'tracking-motion-viterbi-v2',frames:199319,csv_sha256:digest,columns:EVIDENCE_COLUMNS,rows:Array(199319).fill([1,1.2,3.4,2.1,null,.4,1,.35,0,0]),review_windows:[]};
+assert.equal(validateEvidence(evidence,digest),evidence);
+assert.throws(()=>validateEvidence(evidence,'b'.repeat(64)));
+assert.throws(()=>validateEvidence({...evidence,frames:12},digest));
+assert.throws(()=>validateEvidence({...evidence,columns:[]},digest));
+const invalidRows=evidence.rows.slice();invalidRows[100]=[1,1.2,3.4,2.1,null,.4,1,1.2,0,0];
+assert.throws(()=>validateEvidence({...evidence,rows:invalidRows},digest));
+assert.throws(()=>validateEvidence({...evidence,review_windows:[{start:0,end:99}]},digest));
 console.log('PASS: CSV validation, half boundaries, playback, lens clipping and orbit mapping.');

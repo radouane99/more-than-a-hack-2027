@@ -5,7 +5,8 @@ const OBS_COLORS = {H: '#72b89c', A: '#f0b18e', D: '#a8b79e', X: '#3e5540'};
 const NAMES = {H: 'Barcelona · H', A: 'Athletic Club · A', D: 'Dead ball · D', X: 'No answer · X'};
 let labels = null, half = 0, spells = [], importSequence = 0;
 let playing = false, playbackRequest = null, previousTick = null, playhead = 0;
-let renderedSegment = null;
+let renderedSegment = null, evidenceData = null, reviewRendered = false;
+const EVIDENCE_COLUMNS = ['ball_visible', 'nearest_home_m', 'nearest_away_m', 'collective_motion_m_s', 'ball_speed_m_s', 'slow_index', 'phase_support', 'stoppage_index', 'ball_outside', 'local_state'];
 const $ = id => document.getElementById(id);
 
 function parseCSV(text) {
@@ -57,11 +58,13 @@ function setStatus(message, error = false) {
   $('status').classList.toggle('error', error);
 }
 
-function loadData(text, name) {
+function loadData(text, name, evidence = null) {
   // Parse and analyse completely before replacing any currently displayed data.
   const {parsed, result} = validatePrediction(text);
   stopPlayback();
   renderedSegment = null;
+  evidenceData = evidence;
+  reviewRendered = false;
   labels = parsed;
   spells = result.runs;
   const {H, A, D, X} = result.count, live = H + A;
@@ -116,6 +119,7 @@ function inspect() {
   $('spellDuration').textContent = run ? duration(run.end - run.start + 1) : '—';
   draw(frame);
   drawObservatory(frame, run);
+  explainFrame(frame);
 }
 
 function draw(frame) {
@@ -271,21 +275,94 @@ function stepSegment(direction) {
   if (target) seek(target.start);
 }
 
-async function importFile(file) {
-  if (!file) return;
+function validateEvidence(doc, expectedHash) {
+  if (!doc || doc.schema !== 'devupward-evidence-v1' || doc.method !== 'tracking-motion-viterbi-v2' || doc.frames !== 199319) throw Error('Unsupported evidence file.');
+  if (!expectedHash || doc.csv_sha256 !== expectedHash) throw Error('Evidence does not match this exact CSV.');
+  if (JSON.stringify(doc.columns) !== JSON.stringify(EVIDENCE_COLUMNS) || !Array.isArray(doc.rows) || doc.rows.length !== 199319) throw Error('Incomplete evidence timeline.');
+  for (const row of doc.rows) {
+    if (!Array.isArray(row) || row.length !== EVIDENCE_COLUMNS.length) throw Error('Invalid evidence row.');
+    row.forEach((v, i) => {
+      if (v === null && [1, 2, 3, 4].includes(i)) return;
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) throw Error('Invalid evidence value.');
+      if ([0, 6, 8].includes(i) && v !== 0 && v !== 1) throw Error('Invalid evidence flag.');
+      if ([5, 7].includes(i) && v > 1) throw Error('Invalid evidence index.');
+      if (i === 9 && ![0, 1, 2].includes(v)) throw Error('Invalid local-state code.');
+    });
+  }
+  if (!Array.isArray(doc.review_windows) || doc.review_windows.length > 6) throw Error('Invalid evidence review list.');
+  for (const w of doc.review_windows) {
+    if (!Number.isInteger(w.start) || !Number.isInteger(w.end) || w.end < w.start || !BLOCKS.some(([a, b]) => w.start >= a && w.end <= b)) throw Error('Invalid evidence review window.');
+  }
+  return doc;
+}
+
+async function hashBytes(bytes) {
+  if (!globalThis.crypto?.subtle) throw Error('This browser cannot verify evidence hashes. Import the CSV alone or use localhost.');
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function explainFrame(frame) {
+  $('evidenceDetails').hidden = !evidenceData;
+  $('evidenceBadge').textContent = evidenceData ? 'CSV HASH VERIFIED' : 'NO EVIDENCE LOADED';
+  if (!evidenceData) {
+    $('evidenceStatus').textContent = 'To inspect actual V2 features, select the CSV and its .evidence.json together in the same import area. A CSV alone does not contain these signals.';
+    return;
+  }
+  $('evidenceStatus').textContent = `Actual V2 inputs at frame ${frame.toLocaleString('en-US')}. Missing observations remain unavailable; no values are inferred from the displayed label.`;
+  const r = evidenceData.rows[frame], [visible, home, away, motion, ballSpeed, slow, phase, dead, outside, local] = r;
+  const number = (v, unit) => v === null ? 'Unavailable' : `${v.toFixed(2)} ${unit}`;
+  $('whyBall').textContent = visible ? (outside ? 'Observed outside pitch' : 'Observed') : 'Not observed';
+  $('whyBallSpeed').textContent = ballSpeed === null ? 'Ball speed unavailable' : `${ballSpeed.toFixed(2)} m/s ball speed`;
+  $('whyDistances').textContent = `${home === null ? '—' : home.toFixed(2)} / ${away === null ? '—' : away.toFixed(2)} m`;
+  $('whyMotion').textContent = number(motion, 'm/s');
+  $('whyDead').textContent = dead.toFixed(3);
+  $('whySignals').textContent = `Slow-motion index ${slow.toFixed(3)} · Automatic phase support ${phase ? 'present' : 'absent'}${outside ? ' · Outside-pitch evidence active' : ''}`;
+  const localLabel = ['H', 'A', 'D'][local], finalLabel = labels[frame];
+  const noTeamObservation = home === null && away === null && !phase && local === 0;
+  $('whyDecision').textContent = noTeamObservation
+    ? `No team-specific observation is available here. The per-frame tie-break selects H; the temporal result is ${NAMES[finalLabel]}. Viterbi considers neighbouring frames and transition penalties.`
+    : localLabel === finalLabel
+      ? `Per-frame selection: ${NAMES[localLabel]}. The final sequence agrees here. The per-frame rule has fixed tie-breaks; Viterbi also considers neighbouring frames and transition penalties.`
+      : `Per-frame selection: ${NAMES[localLabel]}; temporal result: ${NAMES[finalLabel]}. The per-frame rule has fixed tie-breaks, and temporal decoding can override a single-frame selection to preserve sequence consistency.`;
+  if (!reviewRendered) {
+    reviewRendered = true;
+    const list = $('reviewWindows'); list.replaceChildren();
+    for (const w of evidenceData.review_windows) {
+      const button = document.createElement('button');
+      button.textContent = `${timecode(w.start).slice(0, 8)} · ${duration(w.end - w.start + 1)}`;
+      button.title = 'Local evidence and decoded sequence disagree in this interval; this is not proof of an error.';
+      button.addEventListener('click', () => {
+        const targetHalf = BLOCKS.findIndex(([a, b]) => w.start >= a && w.start <= b);
+        if (half !== targetHalf) setHalf(targetHalf);
+        seek(w.start);
+      });
+      list.append(button);
+    }
+    if (!evidenceData.review_windows.length) list.textContent = 'No disagreement interval of at least one second was exported.';
+  }
+}
+
+async function importFiles(files) {
+  const selected = Array.from(files || []);
+  if (!selected.length) return;
   const sequence = ++importSequence;
   $('importZone').setAttribute('aria-busy', 'true');
   $('validationReport').hidden = true;
   try {
-    if (!file.name.toLowerCase().endsWith('.csv')) throw Error('Choose a .csv prediction file.');
-    if (file.size > 10 * 1024 * 1024) throw Error('CSV must be smaller than 10 MB.');
-    setStatus(`Reading ${file.name}…`);
-    const text = await file.text();
+    const csv = selected.filter(f => f.name.toLowerCase().endsWith('.csv'));
+    const json = selected.filter(f => f.name.toLowerCase().endsWith('.json'));
+    if (csv.length !== 1 || json.length > 1 || selected.length !== csv.length + json.length) throw Error('Select one CSV and, optionally, one evidence JSON.');
+    if (csv[0].size > 10 * 1024 * 1024) throw Error('CSV must be smaller than 10 MB.');
+    if (json[0]?.size > 30 * 1024 * 1024) throw Error('Evidence JSON must be smaller than 30 MB.');
+    setStatus('Checking CSV structure and optional evidence binding…');
+    const bytes = await csv[0].arrayBuffer();
+    const text = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+    validatePrediction(text);
+    let evidence = null;
+    if (json.length) evidence = validateEvidence(JSON.parse(await json[0].text()), await hashBytes(bytes));
     if (sequence !== importSequence) return;
-    setStatus('Checking CSV header, row count, frame order and labels…');
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    if (sequence !== importSequence) return;
-    loadData(text, file.name);
+    loadData(text, csv[0].name, evidence);
   } catch (error) {
     if (sequence === importSequence) setStatus(`Import rejected: ${error.message}${labels ? ' Previous data retained.' : ' No analysis has been loaded.'}`, true);
   } finally {
@@ -357,7 +434,7 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopPlayback(); });
   document.querySelectorAll('[data-import]').forEach(button => button.addEventListener('click', () => $('file').click()));
   $('file').addEventListener('change', async event => {
-    await importFile(event.target.files[0]);
+    await importFiles(event.target.files);
     event.target.value = '';
   });
   const zone = $('importZone');
@@ -368,8 +445,7 @@ if (typeof document !== 'undefined') {
   zone.addEventListener('dragleave', event => { if (!zone.contains(event.relatedTarget)) zone.classList.remove('drag-over'); });
   zone.addEventListener('drop', event => {
     event.preventDefault(); zone.classList.remove('drag-over');
-    if (event.dataTransfer.files.length !== 1) { setStatus('Choose one prediction CSV at a time.', true); return; }
-    importFile(event.dataTransfer.files[0]);
+    importFiles(event.dataTransfer.files);
   });
   document.querySelectorAll('[data-half]').forEach(b => b.addEventListener('click', () => setHalf(Number(b.dataset.half) - 1)));
   $('scrub').addEventListener('input', () => { stopPlayback(); inspect(); });
@@ -414,14 +490,19 @@ if (typeof document !== 'undefined') {
     if (!scrollPending) { scrollPending = true; window.requestAnimationFrame(updateNav); }
   }, {passive: true});
   if (location.protocol === 'http:' || location.protocol === 'https:') {
-    fetch('../submission/final/DEVUPWARD.csv').then(r => {
-      if (!r.ok) throw Error('No local prediction file');
-      return r.text();
-    }).then(text => {
-      if (importSequence === 0) loadData(text, 'DEVUPWARD.csv');
-    }).catch(() => {
-      if (importSequence === 0) setStatus('Select DEVUPWARD.csv to begin.');
-    });
+    (async () => {
+      try {
+        const response = await fetch('../submission/final/DEVUPWARD.csv');
+        if (!response.ok) return;
+        const bytes = await response.arrayBuffer(), text = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+        let evidence = null;
+        try {
+          const sidecar = await fetch('../submission/final/DEVUPWARD.evidence.json');
+          if (sidecar.ok) evidence = validateEvidence(await sidecar.json(), await hashBytes(bytes));
+        } catch { /* Missing or mismatched evidence must never be displayed. */ }
+        if (importSequence === 0) loadData(text, 'DEVUPWARD.csv', evidence);
+      } catch { if (importSequence === 0) setStatus('Select DEVUPWARD.csv to begin.'); }
+    })();
   } else setStatus('Select DEVUPWARD.csv to begin.');
 }
-if (typeof module !== 'undefined') module.exports = {validatePrediction, parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};
+if (typeof module !== 'undefined') module.exports = {validateEvidence, EVIDENCE_COLUMNS, validatePrediction, parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};
