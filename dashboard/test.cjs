@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {parseCSV, analyse, advanceFrame} = require('./app.js');
+const {parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
 // Use synthetic labels to test boundaries without shipping licensed match outputs.
 const labels = Array(199319).fill('X');
 labels.fill('H',11185,90652);
@@ -19,4 +19,12 @@ assert.equal(advanceFrame(100, .1, 60, 1000), 250);
 assert.equal(advanceFrame(999, .1, 60, 1000), 1000);
 assert.equal(advanceFrame(100, -1, 60, 1000), 100);
 assert.equal(advanceFrame(100, 5, 60, 1000), 475);
-console.log('PASS: half boundaries, possession segments, dead-only input, malformed CSV rejection.');
+assert.deepEqual(lensBounds(11185, 11185, 90651), [11185, 12684]);
+assert.deepEqual(lensBounds(90651, 11185, 90651), [89152, 90651]);
+assert.deepEqual(lensBounds(50000, 11185, 90651), [49250, 50749]);
+assert.deepEqual(lensBounds(5, 0, 9), [0, 9]);
+assert.equal(orbitFraction(0, -1, 0, 0), 0);
+assert.equal(orbitFraction(1, 0, 0, 0), .25);
+assert.equal(orbitFraction(0, 1, 0, 0), .5);
+assert.equal(orbitFraction(-1, 0, 0, 0), .75);
+console.log('PASS: CSV validation, half boundaries, playback, lens clipping and orbit mapping.');

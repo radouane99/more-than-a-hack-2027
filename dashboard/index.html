@@ -68,14 +68,32 @@
       <article><div class="metric-label"><span>DEAD BALL</span><svg class="icon" aria-hidden="true"><use href="#icon-layers"/></svg></div><strong id="deadTime">—</strong><div class="metric-meter" aria-hidden="true"><span id="deadTimeMeter"></span></div><div class="metric-bottom"><span class="dot dead-bg"></span><small>Predicted stoppage duration</small></div></article>
     </section>
 
-    <section class="panel reveal" id="timeline">
-      <div class="panel-title"><div><div class="eyebrow">01 / TEMPORAL ANALYSIS</div><h3>Possession explorer<span class="title-dot">.</span></h3></div><div class="segmented" aria-label="Select half"><button data-half="1" class="selected" disabled>1st half</button><button data-half="2" disabled>2nd half</button></div></div>
+    <section class="panel reveal observatory" id="timeline">
+      <div class="panel-title"><div><div class="eyebrow">01 / TEMPORAL ANALYSIS</div><h3>Possession observatory<span class="title-dot">.</span></h3></div><div class="segmented" aria-label="Select half"><button data-half="1" class="selected" disabled>1st half</button><button data-half="2" disabled>2nd half</button></div></div>
       <div class="legend"><span><i class="home-bg"></i>Barcelona</span><span><i class="away-bg"></i>Athletic</span><span><i class="dead-bg"></i>Dead ball</span><span><i class="unknown-bg"></i>No answer</span></div>
+      <div class="observatory-grid">
+        <div class="orbit-column">
+          <div class="orbit-wrap"><canvas id="orbitCanvas" width="280" height="280" aria-label="Circular possession timeline. Use the frame slider or segment buttons to seek."></canvas><div class="orbit-centre"><span id="orbitHalf">1ST HALF</span><img id="orbitCrest" src="assets/barcelona.svg" alt="" width="44" height="50" hidden><strong id="orbitState">Import CSV</strong><small id="orbitClock">Full-half possession clock</small></div></div>
+          <p class="orbit-caption">A whole half. One continuous story.</p>
+          <div class="orbit-key"><span><i></i>Colour = predicted state</span><span>Click the ring to seek</span></div>
+        </div>
+        <div class="lens-column">
+          <div class="lens-heading"><div><span class="eyebrow">THE MOMENT, MAGNIFIED</span><h4>Possession lens</h4></div><span class="lens-badge">60-SECOND WINDOW</span></div>
+          <div class="lens-empty" id="lensEmpty">Import a prediction file to reveal the sequence.</div>
+          <canvas id="lensCanvas" height="104" aria-label="Detailed prediction timeline for a 60-second window around the selected frame"></canvas>
+          <div class="lens-axis"><span id="lensStart">—</span><span>VIDEO TIMECODE</span><span id="lensEnd">—</span></div>
+          <div class="segment-strip"><div><small>CURRENT SEGMENT</small><strong id="segmentState">—</strong></div><div class="segment-duration"><strong id="segmentElapsed">—</strong><small id="segmentTotal">elapsed / total</small></div></div>
+          <div class="segment-progress" aria-hidden="true"><span id="segmentProgress"></span></div>
+          <div class="segment-actions"><button id="previousSegment" disabled aria-label="Go to previous predicted segment">← Previous segment</button><button id="nextSegment" disabled aria-label="Go to next predicted segment">Next segment →</button></div>
+          <div class="upcoming-heading">NEXT IN THE SEQUENCE <span>PREDICTIONS</span></div><div id="upcoming" class="upcoming"><span class="upcoming-empty">The next states will appear here.</span></div>
+        </div>
+      </div>
+      <div class="overview-heading"><span>FULL-HALF OVERVIEW</span><small>Drag the slider or play the sequence</small></div>
       <div class="timeline-track"><div id="timelineTooltip" class="timeline-tooltip" role="tooltip" hidden></div><canvas id="timelineCanvas" height="100" aria-label="Interactive possession timeline"></canvas><div class="timeline-empty"><svg class="icon" aria-hidden="true"><use href="#icon-wave"/></svg><span>Your match timeline will appear here</span></div></div>
       <div class="axis"><span>HALF START</span><span>SELECT A MOMENT TO INSPECT</span><span>HALF END</span></div>
       <input id="scrub" type="range" min="0" max="1" value="0" aria-label="Inspect video frame" disabled>
       <div class="playback"><button id="play" class="play-button" disabled aria-label="Play possession timeline" aria-pressed="false"><span class="play-glyph" aria-hidden="true">▶</span><span id="playLabel">Play timeline</span></button><label class="speed-control">SPEED<select id="speed" aria-label="Timeline playback speed"><option value="15">15×</option><option value="60" selected>60×</option><option value="120">120×</option></select></label><span class="playback-note">Explore the sequence. Every colour is a predicted state.</span></div>
-      <div class="inspector"><div><small>VIDEO TIMECODE</small><strong id="timecode">—</strong></div><div><small>FRAME INDEX</small><strong id="frame">—</strong></div><div><small>MODEL STATE</small><strong id="state">—</strong></div><div><small>CURRENT SPELL</small><strong id="spellDuration">—</strong></div></div>
+      <div class="inspector"><div><small>VIDEO TIMECODE</small><strong id="timecode">—</strong></div><div><small>FRAME INDEX</small><strong id="frame">—</strong></div><div><small>MODEL STATE</small><strong id="state">—</strong></div><div><small>SEGMENT LENGTH</small><strong id="spellDuration">—</strong></div></div>
     </section>
 
     <div class="two-col">

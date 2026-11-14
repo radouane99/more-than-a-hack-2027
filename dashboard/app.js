@@ -1,9 +1,11 @@
 'use strict';
 const BLOCKS = [[11185, 90651], [110808, 190197]];
 const COLORS = {H: '#27775f', A: '#e99874', D: '#aeb9b3', X: '#e8ece5'};
+const OBS_COLORS = {H: '#72b89c', A: '#f0b18e', D: '#a8b79e', X: '#3e5540'};
 const NAMES = {H: 'Barcelona · H', A: 'Athletic Club · A', D: 'Dead ball · D', X: 'No answer · X'};
 let labels = null, half = 0, spells = [], importSequence = 0;
 let playing = false, playbackRequest = null, previousTick = null, playhead = 0;
+let renderedSegment = null;
 const $ = id => document.getElementById(id);
 
 function parseCSV(text) {
@@ -53,6 +55,7 @@ function loadData(text, name) {
   // Parse and analyse completely before replacing any currently displayed data.
   const parsed = parseCSV(text), result = analyse(parsed);
   stopPlayback();
+  renderedSegment = null;
   labels = parsed;
   spells = result.runs;
   const {H, A, D, X} = result.count, live = H + A;
@@ -97,9 +100,10 @@ function inspect() {
   $('timecode').textContent = timecode(frame);
   $('frame').textContent = frame.toLocaleString('en-US');
   $('state').textContent = NAMES[labels[frame]];
-  $('state').style.color = labels[frame] === 'A' ? '#b57150' : labels[frame] === 'H' ? COLORS.H : '#7a8671';
+  $('state').style.color = OBS_COLORS[labels[frame]];
   $('spellDuration').textContent = run ? duration(run.end - run.start + 1) : '—';
   draw(frame);
+  drawObservatory(frame, run);
 }
 
 function draw(frame) {
@@ -123,6 +127,136 @@ function draw(frame) {
   c.beginPath(); c.moveTo(x, 2); c.lineTo(x, 78); c.stroke();
   c.fillStyle = '#fa641c';
   c.beginPath(); c.moveTo(x - 4, 0); c.lineTo(x + 4, 0); c.lineTo(x, 6); c.fill();
+}
+
+
+function lensBounds(frame, start, end, width = 1500) {
+  const span = Math.min(width, end - start + 1);
+  const lo = Math.max(start, Math.min(end - span + 1, frame - Math.floor(span / 2)));
+  return [lo, lo + span - 1];
+}
+
+function orbitFraction(x, y, centreX, centreY) {
+  return ((Math.atan2(y - centreY, x - centreX) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI);
+}
+
+function sizedContext(canvas, height) {
+  const ratio = window.devicePixelRatio || 1, width = canvas.clientWidth;
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  const c = canvas.getContext('2d');
+  c.scale(ratio, ratio);
+  return {c, width, height};
+}
+
+function drawObservatory(frame, run) {
+  if (!run) return;
+  const [a, b] = BLOCKS[half], length = b - a + 1;
+  const ring = $('orbitCanvas'), size = ring.clientWidth;
+  const {c} = sizedContext(ring, size), mid = size / 2, radius = mid - 25;
+  c.lineWidth = 17;
+  for (const segment of spells) {
+    if (segment.end < a || segment.start > b) continue;
+    const from = (segment.start - a) / length * Math.PI * 2 - Math.PI / 2;
+    const to = (segment.end + 1 - a) / length * Math.PI * 2 - Math.PI / 2;
+    c.strokeStyle = OBS_COLORS[segment.label];
+    c.beginPath(); c.arc(mid, mid, radius, from, to); c.stroke();
+  }
+  c.lineWidth = 1;
+  for (let tick = 0; tick < 60; tick++) {
+    const angle = tick / 60 * Math.PI * 2 - Math.PI / 2;
+    const major = tick % 5 === 0;
+    c.strokeStyle = major ? '#8b9e8066' : '#7c907233';
+    c.beginPath();
+    c.moveTo(mid + Math.cos(angle) * (radius + 14), mid + Math.sin(angle) * (radius + 14));
+    c.lineTo(mid + Math.cos(angle) * (radius + (major ? 21 : 17)), mid + Math.sin(angle) * (radius + (major ? 21 : 17)));
+    c.stroke();
+  }
+  const currentAngle = (frame - a) / length * Math.PI * 2 - Math.PI / 2;
+  c.strokeStyle = '#ff7839'; c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(mid + Math.cos(currentAngle) * (radius - 14), mid + Math.sin(currentAngle) * (radius - 14));
+  c.lineTo(mid + Math.cos(currentAngle) * (radius + 23), mid + Math.sin(currentAngle) * (radius + 23)); c.stroke();
+  c.fillStyle = '#fff2df'; c.beginPath();
+  c.arc(mid + Math.cos(currentAngle) * radius, mid + Math.sin(currentAngle) * radius, 4, 0, Math.PI * 2); c.fill();
+  $('orbitHalf').textContent = half === 0 ? '1ST HALF' : '2ND HALF';
+  $('orbitClock').textContent = timecode(frame).slice(0, 8);
+  $('segmentElapsed').textContent = `${((frame - run.start) / 25).toFixed(1)}s`;
+  $('segmentTotal').textContent = `of ${((run.end - run.start + 1) / 25).toFixed(1)}s total`;
+  $('segmentProgress').style.width = `${100 * (frame - run.start + 1) / (run.end - run.start + 1)}%`;
+  $('segmentProgress').style.background = OBS_COLORS[run.label];
+  const lens = $('lensCanvas'), {c: ctx, width} = sizedContext(lens, 104);
+  const [lo, hi] = lensBounds(frame, a, b), span = hi - lo + 1;
+  ctx.strokeStyle = '#91a48420'; ctx.lineWidth = 1;
+  for (let tick = 0; tick <= 6; tick++) {
+    const x = tick / 6 * width;
+    ctx.beginPath(); ctx.moveTo(x, 5); ctx.lineTo(x, 91); ctx.stroke();
+  }
+  ctx.globalAlpha = .85;
+  for (const segment of spells) {
+    if (segment.end < lo || segment.start > hi) continue;
+    const x = (Math.max(lo, segment.start) - lo) / span * width;
+    const end = (Math.min(hi, segment.end) + 1 - lo) / span * width;
+    ctx.fillStyle = OBS_COLORS[segment.label];
+    ctx.fillRect(x, 25, Math.max(.5, end - x - 1), 42);
+    if (end - x > 25) {
+      ctx.fillStyle = '#0f2118'; ctx.font = '600 10px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(segment.label, x + (end - x) / 2, 50);
+    }
+  }
+  ctx.globalAlpha = 1;
+  const cursor = (frame - lo) / span * width;
+  ctx.strokeStyle = '#f7e8ce'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cursor, 12); ctx.lineTo(cursor, 82); ctx.stroke();
+  ctx.fillStyle = '#ff7839'; ctx.beginPath(); ctx.moveTo(cursor - 4, 9); ctx.lineTo(cursor + 4, 9); ctx.lineTo(cursor, 15); ctx.fill();
+  $('lensStart').textContent = timecode(lo).slice(0, 8);
+  $('lensEnd').textContent = timecode(hi).slice(0, 8);
+  const key = `${half}-${run.start}`;
+  if (renderedSegment !== key) {
+    renderedSegment = key;
+    $('orbitState').textContent = NAMES[run.label].split(' · ')[0];
+    $('segmentState').textContent = NAMES[run.label];
+    const crest = $('orbitCrest');
+    crest.hidden = run.label !== 'H' && run.label !== 'A';
+    if (!crest.hidden) crest.src = run.label === 'H' ? 'assets/barcelona.svg' : 'assets/athletic-club.svg';
+    $('orbitState').style.color = OBS_COLORS[run.label];
+    const inHalf = spells.filter(segment => segment.start >= a && segment.end <= b);
+    const index = inHalf.findIndex(segment => segment.start === run.start);
+    $('previousSegment').disabled = index <= 0;
+    $('nextSegment').disabled = index >= inHalf.length - 1;
+    const upcoming = $('upcoming'); upcoming.replaceChildren();
+    const next = inHalf.slice(index + 1, index + 4);
+    if (!next.length) {
+      const text = document.createElement('span'); text.className = 'upcoming-empty'; text.textContent = 'End of this half.'; upcoming.append(text);
+    }
+    for (const segment of next) {
+      const button = document.createElement('button');
+      button.className = 'upcoming-state'; button.style.setProperty('--state-color', OBS_COLORS[segment.label]);
+      const label = document.createElement('b'); label.textContent = segment.label;
+      const time = document.createElement('span'); time.textContent = timecode(segment.start).slice(0, 8);
+      const amount = document.createElement('small'); amount.textContent = `${((segment.end - segment.start + 1) / 25).toFixed(1)}s`;
+      button.append(label, time, amount);
+      button.setAttribute('aria-label', `Seek to ${NAMES[segment.label]} at video time ${time.textContent}`);
+      button.addEventListener('click', () => seek(segment.start)); upcoming.append(button);
+    }
+  }
+}
+
+function seek(frame) {
+  if (!labels) return;
+  stopPlayback();
+  const [a, b] = BLOCKS[half];
+  $('scrub').value = Math.max(a, Math.min(b, Math.round(frame)));
+  inspect();
+}
+
+function stepSegment(direction) {
+  if (!labels) return;
+  const [a, b] = BLOCKS[half], frame = Number($('scrub').value);
+  const segments = spells.filter(segment => segment.start >= a && segment.end <= b);
+  const index = segments.findIndex(segment => frame >= segment.start && frame <= segment.end);
+  const target = segments[index + direction];
+  if (target) seek(target.start);
 }
 
 async function importFile(file) {
@@ -181,6 +315,22 @@ function startPlayback() {
 
 if (typeof document !== 'undefined') {
   $('play').addEventListener('click', startPlayback);
+  $('previousSegment').addEventListener('click', () => stepSegment(-1));
+  $('nextSegment').addEventListener('click', () => stepSegment(1));
+  $('orbitCanvas').addEventListener('click', event => {
+    if (!labels) return;
+    const rect = event.currentTarget.getBoundingClientRect(), x = event.clientX - rect.left, y = event.clientY - rect.top;
+    const radius = Math.hypot(x - rect.width / 2, y - rect.height / 2);
+    if (radius < rect.width / 2 - 45 || radius > rect.width / 2) return;
+    const [a, b] = BLOCKS[half];
+    seek(a + orbitFraction(x, y, rect.width / 2, rect.height / 2) * (b - a));
+  });
+  $('lensCanvas').addEventListener('click', event => {
+    if (!labels) return;
+    const rect = event.currentTarget.getBoundingClientRect(), [a, b] = BLOCKS[half];
+    const [lo, hi] = lensBounds(Number($('scrub').value), a, b);
+    seek(lo + Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * (hi - lo));
+  });
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopPlayback(); });
   document.querySelectorAll('[data-import]').forEach(button => button.addEventListener('click', () => $('file').click()));
   $('file').addEventListener('change', async event => {
@@ -251,4 +401,4 @@ if (typeof document !== 'undefined') {
     });
   } else setStatus('Select DEVUPWARD.csv to begin.');
 }
-if (typeof module !== 'undefined') module.exports = {parseCSV, analyse, duration, timecode, advanceFrame};
+if (typeof module !== 'undefined') module.exports = {parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};
