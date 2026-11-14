@@ -92,7 +92,7 @@ The earlier implementation in `possession.py` is retained because V2 imports its
 
 ## Local dashboard
 
-Open [dashboard/index.html](dashboard/index.html) in a browser and import `submission/final/DEVUPWARD.csv`. Parsing and analysis happen locally; no licensed data is embedded in the dashboard source.
+Open [dashboard/index.html](dashboard/index.html) in a browser and import `submission/final/DEVUPWARD.csv`. Parsing and analysis happen locally; no licensed data is embedded in the dashboard source. A single import area remains available for replacing the file. Analysis stays hidden until the CSV header, exact row count, ordered frame IDs and allowed labels pass validation. Rejected imports preserve any previous analysis; passing the format checks does not establish prediction accuracy.
 
 The Possession Observatory combines a circular full-half clock, a synchronised 60-second possession lens, previous/next segment navigation and the next three predicted states. Clicking the ring, lens or upcoming states seeks to the corresponding video frame. The interface also includes half selection, the full-half overview and predicted possession statistics. No player coordinates or events are invented for the animation. Timeline playback supports 15x, 60x and 120x speeds, pauses on half changes, and stops at the half boundary. Pointer tooltips show the video time and predicted state. Entry effects and hover transitions respect the browser's reduced-motion preference. Its diagnostic card shows the fixed V2 result, regardless of which CSV is imported. Predictions are not official match statistics.
 

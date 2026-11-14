@@ -2,13 +2,19 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
+const {validatePrediction, parseCSV, analyse, advanceFrame, lensBounds, orbitFraction} = require('./app.js');
 // Use synthetic labels to test boundaries without shipping licensed match outputs.
 const labels = Array(199319).fill('X');
 labels.fill('H',11185,90652);
 labels.fill('A',110808,190198);
 const csv='frame,label\n'+labels.map((v,i)=>`${i},${v}`).join('\n')+'\n';
-const result=analyse(parseCSV(csv));
+const result=validatePrediction(csv).result;
+assert.equal(validatePrediction(csv.replace(/\n/g, '\r\n')).parsed.length, 199319);
+assert.throws(() => validatePrediction(csv.replace('frame,label', 'frame,team')));
+assert.throws(() => validatePrediction(csv.replace('0,X', '0,')));
+assert.throws(() => validatePrediction(csv.replace('0,X', '0,H,extra')));
+assert.throws(() => validatePrediction(csv.replace('1,X', 'NaN,X')));
+assert.throws(() => validatePrediction(csv.replace('0,X', '0,H<script>')));
 assert.deepEqual(result.count,{H:79467,A:79390,D:0,X:0});
 assert.equal(result.spells.length,2);
 assert.throws(()=>parseCSV('frame,label\n0,H'));

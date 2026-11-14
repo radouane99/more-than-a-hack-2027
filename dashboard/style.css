@@ -361,3 +361,21 @@ h3 { font-weight:650; }
 .observatory .legend .away-bg { background:#f0b18e; }
 .observatory .legend .dead-bg { background:#a8b79e; }
 .observatory .legend .unknown-bg { background:#3e5540; }
+/* One persistent import surface; analysis unlocks only after validation. */
+.has-data .import-zone { display:flex; }
+.import-rules { display:flex; flex-wrap:wrap; gap:6px 13px; margin-top:9px; font-size:8px; color:#89967c; }
+.import-rules span+span:before { content:'·'; margin-right:10px; color:#bdc9b2; }
+.import-zone[aria-busy=true] { border-color:#e8a36f; background:#fffbf5; }
+.import-zone[aria-busy=true] .import-symbol { animation:checking-pulse .8s ease-in-out infinite alternate; }
+.validation-report { margin-top:10px; padding:13px 17px; border:1px solid #dce7d3; border-radius:6px; background:#f3f8ed; }
+.validation-report>span { font-size:7px; color:#607c4b; letter-spacing:1.2px; font-weight:600; }
+.validation-report ul { display:flex; flex-wrap:wrap; gap:6px 20px; padding:0; margin:7px 0; list-style:none; font-size:9px; color:#526c41; }
+.validation-report li:before { content:'✓'; margin-right:6px; color:#548247; }
+.validation-report small { font-size:8px; color:#8a9a7b; }
+body:not(.has-data) .metrics,body:not(.has-data) .observatory,body:not(.has-data) .two-col { display:none; }
+.nav[aria-disabled=true] { opacity:.4; cursor:default; }
+@keyframes checking-pulse { to { opacity:.45; } }
+@media(max-width:620px) { .import-rules { font-size:7px; gap:5px 8px; }.import-rules span+span:before { margin-right:5px; }.validation-report ul { gap:7px 12px; font-size:8px; } }
+.import-zone { flex-wrap:wrap; }
+.import-copy { flex:1 1 200px; min-width:160px; }
+@media(max-width:620px) { .import-copy { flex-basis:180px; } }

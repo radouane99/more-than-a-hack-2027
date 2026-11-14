@@ -24,7 +24,7 @@
     <div class="workspace-label">MATCH WORKSPACE <span>01</span></div>
     <nav aria-label="Dashboard sections">
       <a class="nav active" href="#overview" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-grid"/></svg>Overview<span class="nav-index">01</span></a>
-      <a class="nav" href="#timeline"><svg class="icon" aria-hidden="true"><use href="#icon-wave"/></svg>Possession explorer<span class="nav-index">02</span></a>
+      <a class="nav" href="#timeline" aria-disabled="true" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-wave"/></svg>Possession explorer<span class="nav-index">02</span></a>
       <a class="nav" href="#method"><svg class="icon" aria-hidden="true"><use href="#icon-layers"/></svg>Method & evidence<span class="nav-index">03</span></a>
     </nav>
     <div class="sidebar-match"><div class="sidebar-match-label">ANALYSIS FIXTURE</div><div><img src="assets/barcelona.svg" alt="" width="22" height="26"><span>Barcelona</span><b>H</b></div><div><img src="assets/athletic-club.svg" alt="" width="22" height="26"><span>Athletic Club</span><b>A</b></div></div>
@@ -34,7 +34,7 @@
   <main id="overview">
     <header>
       <div class="breadcrumb">DEVUPWARD <span>/</span> <b>Match intelligence</b></div>
-      <div class="header-actions"><span class="version-tag">MODEL V2</span><button class="upload" data-import><svg class="icon" aria-hidden="true"><use href="#icon-upload"/></svg>Import CSV</button></div>
+      <div class="header-actions"><span class="version-tag">MODEL V2</span></div>
       <input id="file" type="file" accept=".csv,text/csv" aria-label="Import prediction CSV" hidden>
     </header>
 
@@ -56,9 +56,10 @@
 
     <div class="import-zone" id="importZone">
       <div class="import-symbol"><svg class="icon" aria-hidden="true"><use href="#icon-upload"/></svg></div>
-      <div><h3>Bring the match into focus.</h3><p>Drop your prediction CSV here, or select a file to explore.</p></div>
-      <button class="import-secondary" data-import>Choose CSV<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+      <div class="import-copy"><h3 id="importHeading">Validate your predictions.</h3><p>Drop one CSV here. Its structure is checked before any analysis appears.</p><div class="import-rules"><span>CSV · max 10 MB</span><span>199,319 ordered frames</span><span>H / A / D / X</span></div></div>
+      <button class="import-secondary" data-import><span id="importButtonLabel">Choose & validate CSV</span><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
     </div>
+    <div id="validationReport" class="validation-report" hidden><span>FORMAT CHECKS PASSED</span><ul><li>CSV header</li><li>199,319 rows</li><li>Ordered frame IDs</li><li>Valid H / A / D / X labels</li></ul><small>Format validation does not establish prediction accuracy.</small></div>
     <div id="status" role="status" aria-live="polite">Select DEVUPWARD.csv to begin.</div>
 
     <section class="metrics" aria-label="Prediction summary">

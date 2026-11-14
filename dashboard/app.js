@@ -21,6 +21,12 @@ function parseCSV(text) {
   });
 }
 
+function validatePrediction(text) {
+  const parsed = parseCSV(text);
+  const result = analyse(parsed);
+  return {parsed, result};
+}
+
 function analyse(data) {
   const count = {H: 0, A: 0, D: 0, X: 0}, runs = [];
   for (const [start, end] of BLOCKS) {
@@ -53,7 +59,7 @@ function setStatus(message, error = false) {
 
 function loadData(text, name) {
   // Parse and analyse completely before replacing any currently displayed data.
-  const parsed = parseCSV(text), result = analyse(parsed);
+  const {parsed, result} = validatePrediction(text);
   stopPlayback();
   renderedSegment = null;
   labels = parsed;
@@ -74,8 +80,14 @@ function loadData(text, name) {
     $(id + 'Meter').style.width = `${100 * value}%`;
   }
   document.body.classList.add('has-data');
+  $('validationReport').hidden = false;
+  $('importHeading').textContent = 'Prediction file loaded.';
+  $('importButtonLabel').textContent = 'Replace & validate CSV';
+  const explorerLink = document.querySelector('a[href="#timeline"]');
+  explorerLink.removeAttribute('aria-disabled');
+  explorerLink.removeAttribute('tabindex');
   document.querySelectorAll('[data-half], #scrub, #play').forEach(el => { el.disabled = false; });
-  setStatus('✓ Prediction file verified · 199,319 frames · Statistics cover the two published half windows.');
+  setStatus('✓ CSV format verified · 199,319 ordered frames. Analysis covers the two published half windows.');
   setHalf(half);
 }
 
@@ -262,14 +274,22 @@ function stepSegment(direction) {
 async function importFile(file) {
   if (!file) return;
   const sequence = ++importSequence;
+  $('importZone').setAttribute('aria-busy', 'true');
+  $('validationReport').hidden = true;
   try {
+    if (!file.name.toLowerCase().endsWith('.csv')) throw Error('Choose a .csv prediction file.');
     if (file.size > 10 * 1024 * 1024) throw Error('CSV must be smaller than 10 MB.');
     setStatus(`Reading ${file.name}…`);
     const text = await file.text();
     if (sequence !== importSequence) return;
+    setStatus('Checking CSV header, row count, frame order and labels…');
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (sequence !== importSequence) return;
     loadData(text, file.name);
   } catch (error) {
-    if (sequence === importSequence) setStatus(`Import rejected: ${error.message}${labels ? ' Previous data retained.' : ' Choose a valid prediction CSV.'}`, true);
+    if (sequence === importSequence) setStatus(`Import rejected: ${error.message}${labels ? ' Previous data retained.' : ' No analysis has been loaded.'}`, true);
+  } finally {
+    if (sequence === importSequence) $('importZone').setAttribute('aria-busy', 'false');
   }
 }
 
@@ -314,6 +334,9 @@ function startPlayback() {
 }
 
 if (typeof document !== 'undefined') {
+  document.querySelector('a[href="#timeline"]').addEventListener('click', event => {
+    if (!labels) { event.preventDefault(); $('status').textContent = 'Validate a prediction CSV first to open the explorer.'; }
+  });
   $('play').addEventListener('click', startPlayback);
   $('previousSegment').addEventListener('click', () => stepSegment(-1));
   $('nextSegment').addEventListener('click', () => stepSegment(1));
@@ -379,7 +402,7 @@ if (typeof document !== 'undefined') {
   let scrollPending = false;
   function updateNav() {
     let current = '#overview';
-    for (const id of ['timeline', 'method']) if ($(id).getBoundingClientRect().top <= 160) current = `#${id}`;
+    for (const id of ['timeline', 'method']) if ($(id).getClientRects().length && $(id).getBoundingClientRect().top <= 160) current = `#${id}`;
     document.querySelectorAll('.nav').forEach(link => {
       const active = link.getAttribute('href') === current;
       link.classList.toggle('active', active);
@@ -401,4 +424,4 @@ if (typeof document !== 'undefined') {
     });
   } else setStatus('Select DEVUPWARD.csv to begin.');
 }
-if (typeof module !== 'undefined') module.exports = {parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};
+if (typeof module !== 'undefined') module.exports = {validatePrediction, parseCSV, analyse, duration, timecode, advanceFrame, lensBounds, orbitFraction};
