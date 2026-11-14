@@ -9,3 +9,7 @@
   Club identity reference: https://www.athletic-club.eus/club/datos-institucionales/escudo/
 
 Retrieved 13 November 2026. Crests identify the two teams in the analysed match. Club marks belong to their respective owners; they are not covered by the repository's MIT code licence. Their inclusion does not imply endorsement.
+
+## DEVUPWARD identity
+
+`devupward-logo.png` is the original logo supplied by the team. The source image is preserved without raster edits; responsive sizing and framing are handled in CSS.
